@@ -1,0 +1,166 @@
+basePath: /
+definitions:
+  dto.CreateMenuRequest:
+    properties:
+      name:
+        maxLength: 255
+        type: string
+      parent_id:
+        type: string
+    required:
+    - name
+    type: object
+  dto.MenuResponse:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/dto.MenuResponse'
+        type: array
+      created_at:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+      parent_id:
+        type: string
+      position:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  dto.UpdateMenuRequest:
+    properties:
+      name:
+        maxLength: 255
+        type: string
+    required:
+    - name
+    type: object
+info:
+  contact: {}
+  description: API for managing a hierarchical menu tree.
+  title: Menu Tree API
+  version: "1.0"
+paths:
+  /api/menus:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.MenuResponse'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: List menu tree
+      tags:
+      - menus
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Menu
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateMenuRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.MenuResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Create a menu
+      tags:
+      - menus
+  /api/menus/{id}:
+    delete:
+      parameters:
+      - description: Menu UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Delete a menu and all descendants
+      tags:
+      - menus
+    get:
+      parameters:
+      - description: Menu UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MenuResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a menu and its descendants
+      tags:
+      - menus
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Menu UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: New menu name
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateMenuRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MenuResponse'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Rename a menu
+      tags:
+      - menus
+swagger: "2.0"
