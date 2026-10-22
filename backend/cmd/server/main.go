@@ -36,7 +36,7 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	router := gin.New()
-	router.Use(middleware.Logger(), middleware.Recovery(), middleware.CORS())
+	router.Use(middleware.Logger(), middleware.Recovery(), middleware.CORS(cfg.CORSAllowedOrigins))
 	repo := repository.NewMenuRepository(db)
 	svc := service.NewMenuService(repo)
 	h := handler.NewMenuHandler(svc)

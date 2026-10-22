@@ -2,8 +2,16 @@
 .env.*
 !.env.example
 backend/.env
+node_modules/
+.next/
+*.tsbuildinfo
+out/
+dist/
 *.log
 .idea/
 .vscode/
 coverage.out
 coverage.html
+playwright-report/
+test-results/
+backend/tmp/
