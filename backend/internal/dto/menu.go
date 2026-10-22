@@ -1,6 +1,8 @@
 package dto
 
 import (
+	"encoding/json"
+
 	"github.com/google/uuid"
 	"menu-tree/backend/internal/model"
 )
@@ -12,6 +14,20 @@ type CreateMenuRequest struct {
 
 type UpdateMenuRequest struct {
 	Name string `json:"name" validate:"required,max=255"`
+}
+
+type MoveMenuRequest struct {
+	ParentID *uuid.UUID `json:"parent_id"`
+	Position *int       `json:"position" validate:"omitempty,gte=0"`
+}
+
+type ReorderMenuRequest struct {
+	Position *int `json:"position" validate:"required,gte=0"`
+}
+
+type MoveMenuJSON struct {
+	ParentID json.RawMessage  `json:"parent_id"`
+	Position *json.RawMessage `json:"position"`
 }
 
 type MenuResponse struct {

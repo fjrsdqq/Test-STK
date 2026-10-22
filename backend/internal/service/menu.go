@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"github.com/google/uuid"
@@ -17,6 +18,8 @@ type MenuService interface {
 	Create(context.Context, string, *uuid.UUID) (dto.MenuResponse, error)
 	Update(context.Context, uuid.UUID, string) (dto.MenuResponse, error)
 	Delete(context.Context, uuid.UUID) error
+	Move(context.Context, uuid.UUID, dto.MoveMenuRequest) (dto.MenuResponse, error)
+	Reorder(context.Context, uuid.UUID, int) (dto.MenuResponse, error)
 }
 type DefaultMenuService struct{ repo repository.MenuRepository }
 
@@ -98,7 +101,7 @@ func (s *DefaultMenuService) Create(ctx context.Context, name string, parentID *
 	}
 	m := model.Menu{Name: name, ParentID: parentID}
 	if err := s.repo.Create(ctx, &m); err != nil {
-		return dto.MenuResponse{}, apperror.Internal()
+		return dto.MenuResponse{}, mapRepoError(err)
 	}
 	return dto.FromModel(m), nil
 }
@@ -127,9 +130,38 @@ func (s *DefaultMenuService) Delete(ctx context.Context, id uuid.UUID) error {
 	}
 	return nil
 }
-func mapRepoError(err error) error {
-	if err == repository.ErrNotFound {
-		return apperror.NotFound()
+
+func (s *DefaultMenuService) Move(ctx context.Context, id uuid.UUID, req dto.MoveMenuRequest) (dto.MenuResponse, error) {
+	if req.Position != nil && *req.Position < 0 {
+		return dto.MenuResponse{}, apperror.Validation("position must be a non-negative integer")
 	}
-	return apperror.Internal()
+	menu, err := s.repo.Move(ctx, id, req.ParentID, req.Position)
+	if err != nil {
+		return dto.MenuResponse{}, mapRepoError(err)
+	}
+	return dto.FromModel(menu), nil
+}
+
+func (s *DefaultMenuService) Reorder(ctx context.Context, id uuid.UUID, position int) (dto.MenuResponse, error) {
+	if position < 0 {
+		return dto.MenuResponse{}, apperror.Validation("position must be a non-negative integer")
+	}
+	menu, err := s.repo.Reorder(ctx, id, position)
+	if err != nil {
+		return dto.MenuResponse{}, mapRepoError(err)
+	}
+	return dto.FromModel(menu), nil
+}
+
+func mapRepoError(err error) error {
+	switch {
+	case errors.Is(err, repository.ErrNotFound):
+		return apperror.NotFound()
+	case errors.Is(err, repository.ErrCycleDetected):
+		return apperror.MenuCycleDetected()
+	case errors.Is(err, repository.ErrInvalidPosition):
+		return apperror.Validation("position must be a non-negative integer")
+	default:
+		return apperror.Internal()
+	}
 }

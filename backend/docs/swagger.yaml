@@ -29,6 +29,22 @@ definitions:
       updated_at:
         type: string
     type: object
+  dto.MoveMenuRequest:
+    properties:
+      parent_id:
+        type: string
+      position:
+        minimum: 0
+        type: integer
+    type: object
+  dto.ReorderMenuRequest:
+    properties:
+      position:
+        minimum: 0
+        type: integer
+    required:
+    - position
+    type: object
   dto.UpdateMenuRequest:
     properties:
       name:
@@ -161,6 +177,108 @@ paths:
             additionalProperties: true
             type: object
       summary: Rename a menu
+      tags:
+      - menus
+  /api/menus/{id}/move:
+    patch:
+      consumes:
+      - application/json
+      description: 'parent_id is required; send null to move to the root. Example:
+        {"parent_id":null,"position":0}. Omit position to append among the target
+        siblings.'
+      parameters:
+      - description: Menu UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Move request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.MoveMenuRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MenuResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Move a menu to another parent and position
+      tags:
+      - menus
+  /api/menus/{id}/reorder:
+    patch:
+      consumes:
+      - application/json
+      description: 'Example request: {"position":2}. Positions beyond the sibling
+        list are clamped to its last slot.'
+      parameters:
+      - description: Menu UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Reorder request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ReorderMenuRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.MenuResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties: true
+            type: object
+        "422":
+          description: Unprocessable Entity
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Reorder a menu among its siblings
       tags:
       - menus
 swagger: "2.0"

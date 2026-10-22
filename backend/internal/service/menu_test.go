@@ -2,17 +2,22 @@ package service
 
 import (
 	"context"
+	"errors"
+	"testing"
+
 	"github.com/google/uuid"
 	"menu-tree/backend/internal/apperror"
+	"menu-tree/backend/internal/dto"
 	"menu-tree/backend/internal/model"
 	"menu-tree/backend/internal/repository"
-	"testing"
 )
 
 type mockRepo struct {
-	rows      []model.Menu
-	getErr    error
-	deleteErr error
+	rows       []model.Menu
+	getErr     error
+	deleteErr  error
+	moveErr    error
+	reorderErr error
 }
 
 func (m *mockRepo) List(context.Context) ([]model.Menu, error) { return m.rows, nil }
@@ -36,6 +41,33 @@ func (m *mockRepo) Create(_ context.Context, row *model.Menu) error {
 }
 func (m *mockRepo) Update(context.Context, *model.Menu) error { return nil }
 func (m *mockRepo) Delete(context.Context, uuid.UUID) error   { return m.deleteErr }
+func (m *mockRepo) Move(_ context.Context, id uuid.UUID, parentID *uuid.UUID, position *int) (model.Menu, error) {
+	if m.moveErr != nil {
+		return model.Menu{}, m.moveErr
+	}
+	for i := range m.rows {
+		if m.rows[i].ID == id {
+			m.rows[i].ParentID = parentID
+			if position != nil {
+				m.rows[i].Position = *position
+			}
+			return m.rows[i], nil
+		}
+	}
+	return model.Menu{}, repository.ErrNotFound
+}
+func (m *mockRepo) Reorder(_ context.Context, id uuid.UUID, position int) (model.Menu, error) {
+	if m.reorderErr != nil {
+		return model.Menu{}, m.reorderErr
+	}
+	for i := range m.rows {
+		if m.rows[i].ID == id {
+			m.rows[i].Position = position
+			return m.rows[i], nil
+		}
+	}
+	return model.Menu{}, repository.ErrNotFound
+}
 
 func TestListBuildsNestedTree(t *testing.T) {
 	a, b, c := uuid.New(), uuid.New(), uuid.New()
@@ -71,4 +103,39 @@ func TestDeleteMissingMenu(t *testing.T) {
 		t.Fatalf("expected 404, got %v", err)
 	}
 }
+
+func TestMoveMapsCycleToConflict(t *testing.T) {
+	for _, name := range []string{"self", "descendant"} {
+		t.Run(name, func(t *testing.T) {
+			repo := &mockRepo{moveErr: repository.ErrCycleDetected}
+			_, err := NewMenuService(repo).Move(context.Background(), uuid.New(), dto.MoveMenuRequest{})
+			var appErr *apperror.Error
+			if !errors.As(err, &appErr) || appErr.Status != 409 || appErr.Code != "MENU_CYCLE_DETECTED" {
+				t.Fatalf("expected cycle conflict, got %v", err)
+			}
+		})
+	}
+}
+
+func TestMoveMapsMissingDestinationToNotFound(t *testing.T) {
+	repo := &mockRepo{moveErr: repository.ErrNotFound}
+	_, err := NewMenuService(repo).Move(context.Background(), uuid.New(), dto.MoveMenuRequest{})
+	var appErr *apperror.Error
+	if !errors.As(err, &appErr) || appErr.Status != 404 {
+		t.Fatalf("expected not found, got %v", err)
+	}
+}
+
+func TestMoveToRootReturnsUpdatedMenu(t *testing.T) {
+	id, parent := uuid.New(), uuid.New()
+	repo := &mockRepo{rows: []model.Menu{{ID: id, Name: "child", ParentID: &parent, Position: 2}}}
+	item, err := NewMenuService(repo).Move(context.Background(), id, dto.MoveMenuRequest{ParentID: nil})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.ID != id || item.ParentID != nil {
+		t.Fatalf("expected moved root menu, got %#v", item)
+	}
+}
+
 func ptrUUID(id uuid.UUID) *uuid.UUID { return &id }

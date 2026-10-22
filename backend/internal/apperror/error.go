@@ -15,6 +15,9 @@ func New(status int, code, message string) *Error {
 func BadRequest(message string) *Error { return New(http.StatusBadRequest, "BAD_REQUEST", message) }
 func InvalidID() *Error                { return New(http.StatusBadRequest, "INVALID_ID", "id must be a valid UUID") }
 func NotFound() *Error                 { return New(http.StatusNotFound, "NOT_FOUND", "menu not found") }
+func MenuCycleDetected() *Error {
+	return New(http.StatusConflict, "MENU_CYCLE_DETECTED", "a menu cannot be moved into itself or one of its descendants")
+}
 func Validation(message string) *Error {
 	return New(http.StatusUnprocessableEntity, "VALIDATION_ERROR", message)
 }
